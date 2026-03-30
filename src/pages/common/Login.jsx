@@ -17,9 +17,7 @@ const Login = () => {
   });
   const [errors, setErrors] = React.useState({});
 
-  // If already authenticated, keep user on the app instead of showing login again
   useEffect(() => {
-    // If already authenticated, redirect to the correct dashboard based on role
     if (token && (role || userInfo)) {
       let userRole = role || userInfo?.role;
       if (Array.isArray(userRole)) userRole = userRole[0];
@@ -56,7 +54,6 @@ const Login = () => {
 
       notification.success({ message: t("signedInWithGoogle") });
 
-      // Normalize role (handle ROLE_ prefix or array shape)
       let userRole = userData?.role;
       if (Array.isArray(userRole)) userRole = userRole[0];
       userRole = String(userRole || "")

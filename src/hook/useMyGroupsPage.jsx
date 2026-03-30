@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { notification, Modal } from "antd";
 import { GroupService } from "../services/group.service";
 import { MajorService } from "../services/major.service";
-import { BoardService } from "../services/board.service";
 import { ReportService } from "../services/report.service";
 import { useInvitationRealtime } from "./useInvitationRealtime";
 import { useAuth } from "../context/AuthContext";
@@ -104,8 +103,6 @@ export const useMyGroupsPage = (t, navigate, userInfo) => {
   const [errors, setErrors] = useState({});
   const [majors, setMajors] = useState([]);
   const [majorsLoading, setMajorsLoading] = useState(false);
-  const [board, setBoard] = useState(null);
-  const [loadingBoard, setLoadingBoard] = useState(false);
   const hasFetchedGroupsRef = useRef(false);
   const majorsFetchLock = useRef(false);
 
@@ -500,23 +497,6 @@ export const useMyGroupsPage = (t, navigate, userInfo) => {
     }
   };
 
-  const fetchBoardTask = async (groupId) => {
-    if (!groupId) return;
-    try {
-      setLoading(true);
-      const res = await BoardService.getBoard(groupId);
-
-      const data = res?.data || null;
-      setBoard(data);
-      return data;
-    } catch (error) {}
-  };
-
-  const getAllTasksFromBoard = (board) => {
-    if (!board?.columns) return [];
-    return board.columns.flatMap((column) => column.tasks || []);
-  };
-
   useEffect(() => {
     if (hasFetchedGroupsRef.current) return;
     hasFetchedGroupsRef.current = true;
@@ -557,8 +537,6 @@ export const useMyGroupsPage = (t, navigate, userInfo) => {
     invitationsLoading,
     majors,
     majorsLoading,
-    board,
-    loadingBoard,
 
     // handlers
     setOpen,
@@ -570,9 +548,6 @@ export const useMyGroupsPage = (t, navigate, userInfo) => {
     handleApprove,
     handleReject,
 
-    //board
-    fetchBoardTask,
-    getAllTasksFromBoard,
     handleAcceptInvitation,
     handleDeclineInvitation,
     acceptingInvitationId,

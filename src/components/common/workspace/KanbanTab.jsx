@@ -1,5 +1,4 @@
 import React from "react";
-import { Modal } from "antd";
 import {
   DndContext,
   closestCenter,
@@ -19,7 +18,6 @@ export default function KanbanTab({
   createTask,
   deleteTask,
   deleteColumn,
-  moveColumn,
   moveColumnLeft,
   moveColumnRight,
   handleDragOver,
@@ -100,11 +98,6 @@ export default function KanbanTab({
                             assignees: quickPayload?.assignees || [],
                           });
                         }
-                      : undefined
-                  }
-                  onMoveColumn={
-                    !readOnly && moveColumn
-                      ? () => moveColumn(colId, meta)
                       : undefined
                   }
                   onMoveColumnLeft={

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, Mail, Search, Plus, UserRound } from "lucide-react";
 import { UserService } from "../../../services/user.service";
 import { GroupService } from "../../../services/group.service";
@@ -11,6 +11,8 @@ export default function AddMemberModal({ open, onClose, onAdd, t }) {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(null);
+  const searchSeqRef = useRef(0);
+  const suppressNextSearchRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -19,38 +21,57 @@ export default function AddMemberModal({ open, onClose, onAdd, t }) {
     setSelected(null);
   }, [open]);
 
-  const handleSearch = async (e) => {
-    const value = e.target.value;
-    setQuery(value);
-    if (!value.trim()) {
+  useEffect(() => {
+    if (!open) return;
+    if (suppressNextSearchRef.current) {
+      suppressNextSearchRef.current = false;
+      return;
+    }
+    const value = query.trim();
+    if (!value) {
       setResults([]);
+      setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      const res = await UserService.list({ email: value });
-      const data = Array.isArray(res.data) ? res.data : [];
+    const seq = ++searchSeqRef.current;
+    const timer = setTimeout(async () => {
+      try {
+        setLoading(true);
+        const res = await UserService.list({ email: value });
+        if (seq !== searchSeqRef.current) return;
+        const data = Array.isArray(res.data) ? res.data : [];
 
-      // Filter out users who already have a group in this semester
-      const filteredData = data.filter((u) => u.hasGroupInSemester !== true);
+        // Filter out users who already have a group in this semester
+        const filteredData = data.filter((u) => u.hasGroupInSemester !== true);
 
-      setResults(
-        filteredData.map((u) => ({
-          userId: u.userId,
-          name: u.displayName,
-          email: u.email,
-          photoURL: u.avatarUrl,
-        }))
-      );
-    } catch {
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
+        setResults(
+          filteredData.map((u) => ({
+            userId: u.userId,
+            name: u.displayName,
+            email: u.email,
+            photoURL: u.avatarUrl,
+          }))
+        );
+      } catch {
+        if (seq !== searchSeqRef.current) return;
+        setResults([]);
+      } finally {
+        if (seq === searchSeqRef.current) setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query, open]);
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setQuery(value);
+    setSelected(null);
   };
 
   const handleSelect = (user) => {
+    suppressNextSearchRef.current = true;
     setSelected(user);
     setQuery(user.email);
     setResults([]);
@@ -124,7 +145,7 @@ export default function AddMemberModal({ open, onClose, onAdd, t }) {
             <input
               type="text"
               value={query}
-              onChange={handleSearch}
+              onChange={handleSearchChange}
               placeholder={t("enterMemberEmail") || "Enter email"}
               className="!bg-transparent !outline-none !w-full !text-gray-700"
             />

@@ -4,6 +4,11 @@ import { GroupService } from "../services/group.service";
 import { BoardService } from "../services/board.service";
 import { SkillService } from "../services/skill.service";
 import { ReportService } from "../services/report.service";
+import {
+  formatSemester,
+  normalizeMemberDetailList,
+  normalizeSkills,
+} from "../utils/group.utils";
 
 
 export const useGroupDetail = ({ groupId, t, userInfo }) => {
@@ -32,9 +37,10 @@ export const useGroupDetail = ({ groupId, t, userInfo }) => {
     }
   }, [groupId, t]);
 
-  const fetchGroupDetail = useCallback(async () => {
+  const fetchGroupDetail = useCallback(async (options = {}) => {
     if (!groupId) return;
-    if (loadedGroupIdRef.current === groupId) return;
+    const shouldSkip = loadedGroupIdRef.current === groupId && !options.force;
+    if (shouldSkip) return;
 
     loadedGroupIdRef.current = groupId;
 
@@ -52,21 +58,7 @@ export const useGroupDetail = ({ groupId, t, userInfo }) => {
       const semesterInfo = d.semester || {};
       const rawStartDate = semesterInfo.startDate || d.startDate;
       const rawEndDate = semesterInfo.endDate || d.endDate;
-
-      const season =
-        typeof semesterInfo.season === "string"
-          ? semesterInfo.season.trim()
-          : semesterInfo.season
-          ? String(semesterInfo.season)
-          : "";
-
-      const formattedSeason = season
-        ? season.charAt(0).toUpperCase() + season.slice(1)
-        : "";
-
-      const semesterLabel = [formattedSeason, semesterInfo.year]
-        .filter(Boolean)
-        .join(" ");
+      const semesterLabel = formatSemester(semesterInfo);
 
       const members =
         membersRes.status === "fulfilled" &&
@@ -74,48 +66,10 @@ export const useGroupDetail = ({ groupId, t, userInfo }) => {
           ? membersRes.value.data
           : [];
 
-      const normalizedMembers = members.map((m) => {
-        const email = m.email || "";
-        const normalizedEmail = email.toLowerCase();
-        const currentEmail = (userInfo?.email || "").toLowerCase();
-
-        const avatarFromApi =
-          m.avatarUrl ||
-          m.avatarURL ||
-          m.avatar_url ||
-          m.avatar ||
-          m.imageUrl ||
-          m.imageURL ||
-          m.image_url ||
-          m.photoURL ||
-          m.photoUrl ||
-          m.photo_url ||
-          m.profileImage ||
-          m.user?.avatarUrl ||
-          m.user?.avatar ||
-          m.user?.photoURL ||
-          m.user?.photoUrl ||
-          m.user?.imageUrl ||
-          m.user?.profileImage ||
-          "";
-
-        const memberId =
-          m.id || m.memberId || m.userId || m.userID || m.accountId || "";
-
-        return {
-          id: memberId,
-          name: m.displayName || m.name || "",
-          email,
-          role: m.role || m.status || "",
-          joinedAt: m.joinedAt,
-          avatarUrl:
-            avatarFromApi ||
-            (currentEmail && normalizedEmail === currentEmail
-              ? userInfo?.photoURL || ""
-              : ""),
-          assignedRoles: m.assignedRoles || [],
-        };
-      });
+      const normalizedMembers = normalizeMemberDetailList(
+        members,
+        userInfo || {}
+      );
 
       const currentEmail = (userInfo?.email || "").toLowerCase();
       const detailRole = (d.role || "").toLowerCase();
@@ -155,26 +109,19 @@ export const useGroupDetail = ({ groupId, t, userInfo }) => {
           d.majorId || d.major?.id || d.major?.majorId || d.majorID || "",
         topicId: d.topicId || d.topic?.topicId || d.topic?.id || "",
         topicName: d.topicName || d.topic?.title || d.topic?.name || "",
-        skills: Array.isArray(d.skills)
-          ? d.skills
-          : typeof d.skills === "string" && d.skills
-          ? d.skills
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : [],
+        skills: normalizeSkills(d.skills),
         canEdit: detailRole === "leader" || leaderFromMembers,
       });
 
       setGroupMembers(normalizedMembers);
 
-      if (d.skills && d.skills.length > 0) {
+      const groupSkillTokens = normalizeSkills(d.skills);
+      if (groupSkillTokens.length > 0) {
         try {
           const skillsResponse = await SkillService.list({});
           const allSkills = Array.isArray(skillsResponse?.data)
             ? skillsResponse.data
             : [];
-          const groupSkillTokens = Array.isArray(d.skills) ? d.skills : [];
           const matchedSkills = allSkills.filter((s) =>
             groupSkillTokens.includes(s.token)
           );
@@ -249,7 +196,9 @@ export const useGroupDetail = ({ groupId, t, userInfo }) => {
               const members = Array.isArray(membersRes?.data)
                 ? membersRes.data
                 : [];
-              setGroupMembers(members);
+              setGroupMembers(
+                normalizeMemberDetailList(members, userInfo || {})
+              );
 
               resolve(true);
             } catch (error) {
@@ -304,7 +253,7 @@ export const useGroupDetail = ({ groupId, t, userInfo }) => {
             });
 
             try {
-              await fetchGroupDetail();
+              await fetchGroupDetail({ force: true });
             } catch (fetchError) {
               // eslint-disable-next-line no-console
               console.error(

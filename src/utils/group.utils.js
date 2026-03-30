@@ -1,4 +1,3 @@
-// src/utils/group.utils.js
 export const formatSemester = (semester = {}) => {
   const season = semester.season
     ? `${semester.season}`.trim()
@@ -9,6 +8,70 @@ export const formatSemester = (semester = {}) => {
     ? season.charAt(0).toUpperCase() + season.slice(1)
     : "";
   return [formattedSeason, semester.year].filter(Boolean).join(" ");
+};
+
+export const normalizeSkills = (skills) => {
+  if (Array.isArray(skills)) return skills;
+  if (typeof skills === "string" && skills.trim()) {
+    return skills
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
+export const normalizeMemberDetail = (member = {}, currentUser = {}) => {
+  const email = member.email || "";
+  const normalizedEmail = email.toLowerCase();
+  const currentEmail = (currentUser.email || "").toLowerCase();
+
+  const avatarFromApi =
+    member.avatarUrl ||
+    member.avatarURL ||
+    member.avatar_url ||
+    member.avatar ||
+    member.imageUrl ||
+    member.imageURL ||
+    member.image_url ||
+    member.photoURL ||
+    member.photoUrl ||
+    member.photo_url ||
+    member.profileImage ||
+    member.user?.avatarUrl ||
+    member.user?.avatar ||
+    member.user?.photoURL ||
+    member.user?.photoUrl ||
+    member.user?.imageUrl ||
+    member.user?.profileImage ||
+    "";
+
+  const memberId =
+    member.id ||
+    member.memberId ||
+    member.userId ||
+    member.userID ||
+    member.accountId ||
+    "";
+
+  return {
+    id: memberId,
+    name: member.displayName || member.name || "",
+    email,
+    role: member.role || member.status || "",
+    joinedAt: member.joinedAt,
+    avatarUrl:
+      avatarFromApi ||
+      (currentEmail && normalizedEmail === currentEmail
+        ? currentUser.photoURL || ""
+        : ""),
+    assignedRoles: member.assignedRoles || [],
+  };
+};
+
+export const normalizeMemberDetailList = (members, currentUser = {}) => {
+  if (!Array.isArray(members)) return [];
+  return members.map((member) => normalizeMemberDetail(member, currentUser));
 };
 
 export const normalizeGroup = (group, idx = 0) => {
@@ -114,13 +177,7 @@ export const normalizeGroup = (group, idx = 0) => {
           ""
         : "") || group.mentorName || "",
     mentors: Array.isArray(group.mentors) ? group.mentors : [],
-    skills: group.skills 
-      ? (Array.isArray(group.skills) 
-          ? group.skills 
-          : (typeof group.skills === 'string' 
-              ? group.skills.split(',').map(s => s.trim()).filter(Boolean)
-              : []))
-      : [],
+    skills: normalizeSkills(group.skills),
   };
 };
 

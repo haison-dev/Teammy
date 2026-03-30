@@ -51,7 +51,6 @@ const Column = ({
   onCreate,
   onDelete,
   onDeleteTask,
-  onMoveColumn,
   onMoveColumnLeft,
   onMoveColumnRight,
   columnMeta = {},

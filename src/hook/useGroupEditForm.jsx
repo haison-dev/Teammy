@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { notification } from "antd";
 import { SkillService } from "../services/skill.service";
 import { GroupService } from "../services/group.service";
+import { normalizeSkills } from "../utils/group.utils";
 
 
 export const useGroupEditForm = ({ group, groupMembers, userInfo, t, setGroup }) => {
@@ -19,26 +20,6 @@ export const useGroupEditForm = ({ group, groupMembers, userInfo, t, setGroup })
   const [availableSkills, setAvailableSkills] = useState([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
 
-  useEffect(() => {
-    if (group) {
-      setEditForm({
-        name: group.title || "",
-        description: group.description || "",
-        maxMembers: group.maxMembers || (groupMembers?.length ?? 0) || 5,
-        majorId: group.majorId || "",
-        topicId: group.topicId || "",
-        skills: Array.isArray(group.skills)
-          ? group.skills
-          : typeof group.skills === "string" && group.skills
-          ? group.skills
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : [],
-      });
-    }
-  }, [group, groupMembers?.length]);
-
   const validateEditForm = () => {
     const errors = {};
     if (!editForm.name.trim()) {
@@ -48,6 +29,18 @@ export const useGroupEditForm = ({ group, groupMembers, userInfo, t, setGroup })
     setEditErrors(errors);
     return Object.keys(errors).length === 0;
   };
+
+  useEffect(() => {
+    if (!group) return;
+    setEditForm({
+      name: group.title || "",
+      description: group.description || "",
+      maxMembers: group.maxMembers || (groupMembers?.length ?? 0) || 5,
+      majorId: group.majorId || "",
+      topicId: group.topicId || "",
+      skills: normalizeSkills(group.skills),
+    });
+  }, [group, groupMembers?.length]);
 
   useEffect(() => {
     const fetchSkills = async () => {
@@ -70,29 +63,7 @@ export const useGroupEditForm = ({ group, groupMembers, userInfo, t, setGroup })
       }
     };
 
-    if (editOpen && group) {
-      let groupSkills = [];
-      if (Array.isArray(group.skills)) {
-        groupSkills = group.skills;
-      } else if (typeof group.skills === "string" && group.skills) {
-        groupSkills = group.skills
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-      }
-
-      setEditForm((prev) => ({
-        ...prev,
-        name: group.title || "",
-        description: group.description || "",
-        maxMembers: group.maxMembers || (groupMembers?.length ?? 0) || 5,
-        majorId: group.majorId || "",
-        topicId: group.topicId || "",
-        skills: groupSkills,
-      }));
-
-      fetchSkills();
-    }
+    if (editOpen && group) fetchSkills();
   }, [editOpen, group, groupMembers?.length, userInfo?.majorName]);
 
   const handleEditChange = (field, value) => {

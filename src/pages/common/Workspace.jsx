@@ -253,39 +253,6 @@ const Workspace = () => {
       dueDate: null,
     });
   };
-  const handleMoveColumn = (columnId, columnMetaData = {}) => {
-    let nextPosition = columnMetaData?.position ?? 0;
-    Modal.confirm({
-      title: t("moveColumn") || "Move column",
-      content: (
-        <div className="space-y-2">
-          <p className="text-sm text-gray-600">
-            {t("enterNewPosition") || "Enter new position (0 = first)."}
-          </p>
-          <input
-            type="number"
-            defaultValue={nextPosition}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            onChange={(e) => {
-              nextPosition = Number(e.target.value) || 0;
-            }}
-          />
-        </div>
-      ),
-      okText: t("ok") || "OK",
-      cancelText: t("cancel") || "Cancel",
-      onOk: async () => {
-        try {
-          await BoardService.updateColumn(resolvedGroupId, columnId, {
-            position: nextPosition,
-          });
-          refetchBoard({ showLoading: false });
-        } catch (err) {
-
-        }
-      },
-    });
-  };
   const handleSwitchView = (view) => {
     setBoardView(view);
     try {
@@ -420,6 +387,17 @@ const Workspace = () => {
     });
     return Array.from(set);
   }, [columns]);
+  const recentActivity = useMemo(() => {
+    const items = Object.values(filteredColumns || {}).flat();
+    return items
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt || b.createdAt || 0) -
+          new Date(a.updatedAt || a.createdAt || 0)
+      )
+      .slice(0, 4);
+  }, [filteredColumns]);
   useEffect(() => {
     setListViewPage(1);
   }, [listViewFilterStatus, listViewFilterPriority, listViewPageSize, resolvedGroupId]);
@@ -510,14 +488,6 @@ const Workspace = () => {
   }
 
   const hasData = filteredColumns && Object.keys(filteredColumns).length > 0;
-  const flattenedTasksForActivity = Object.values(filteredColumns || {}).flat();
-  const recentActivity = flattenedTasksForActivity
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAt || b.createdAt || 0) -
-        new Date(a.updatedAt || a.createdAt || 0)
-    )
-    .slice(0, 4);
   const mentor =
     groupMembers?.find(
       (member) =>
@@ -833,46 +803,6 @@ const Workspace = () => {
                                 priority: "medium",
                                 status: statusForColumn,
                                 dueDate: null,
-                              });
-                            }}
-                            onMoveColumn={(targetId, columnMetaData) => {
-                              Modal.confirm({
-                                title: t("moveColumn") || "Move column",
-                                content: (
-                                  <div className="space-y-2">
-                                    <p className="text-sm text-gray-600">
-                                      {t("enterNewPosition") ||
-                                        "Enter new position (0 = first)."}
-                                    </p>
-                                    <input
-                                      type="number"
-                                      defaultValue={columnMetaData?.position || 0}
-                                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                                      onChange={(e) => {
-                                        columnMetaData.nextPosition =
-                                          Number(e.target.value) || 0;
-                                      }}
-                                    />
-                                  </div>
-                                ),
-                                okText: t("ok") || "OK",
-                                cancelText: t("cancel") || "Cancel",
-                                onOk: async () => {
-                                  const nextPos =
-                                    columnMetaData?.nextPosition ??
-                                    columnMetaData?.position ??
-                                    0;
-                                  try {
-                                    await BoardService.updateColumn(
-                                      resolvedGroupId,
-                                      targetId,
-                                      { position: nextPos }
-                                    );
-                                    refetchBoard({ showLoading: false });
-                                  } catch (err) {
-
-                                  }
-                                },
                               });
                             }}
                             onDelete={() => {
